@@ -3,3 +3,5 @@ bin
 *.exe
 metadata.json
 obj
+*.jar
+*.crt

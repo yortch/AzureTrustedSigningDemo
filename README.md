@@ -33,12 +33,13 @@ Instructions from: [Quickstart: Set up Trusted Signing](https://learn.microsoft.
     az extension add --name trustedsigning
     ```
 
-1. Export resource name, resource group, location as environment variables for subsequent commands:
+1. Export resource name, resource group, location and certificate profile name as environment variables for subsequent commands:
 
     ```bash
     RG=trusted-signing-rg
     LOCATION=EastUS
     NAME=TrustedSigningDemo
+    PROFILE_NAME=CertProfile
     ```
 
 1. Create resource group:
@@ -105,7 +106,7 @@ Create a certificate profile by using Azure CLI:
 
 ```bash
 az trustedsigning certificate-profile create -g $RG --a $NAME \
--n CertProfile --profile-type PublicTrust --identity-validation-id $VALIDATION_ID
+-n $PROFILE_NAME --profile-type PublicTrust --identity-validation-id $VALIDATION_ID
 ```
 
 ## Set up SignTool to use Trusted Signing
@@ -156,12 +157,12 @@ For latest instructions refer to this [documentation](https://learn.microsoft.co
         {
             "Endpoint": "$ENDPOINT_URI",
             "CodeSigningAccountName": "$NAME",
-            "CertificateProfileName": "CertProfile"
+            "CertificateProfileName": "$PROFILE_NAME"
         }
         EOF
         ```
 
-### Compile demo application (optional)
+### Compile .NET demo application (optional)
 
 A simple C# Console application is provided in this repo to allow you to test code signing.
 You can test using a different executable, this is only provided here for convenience.
@@ -171,9 +172,10 @@ Compile .NET application as follows:
 ```bash
 cd dotnetapp
 dotnet build
+cd ..
 ```
 
-### Use SignTool to sign a file
+### Use SignTool to sign executable file
 
 Use the following command to sign the `dotnetapp.exe` compiled above:
 
@@ -196,3 +198,107 @@ Number of files successfully Signed: 1
 Number of warnings: 0
 Number of errors: 0
 ```
+
+To verify signature the following command can be used:
+
+```bash
+Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool verify //pa dotnetapp/bin/Debug/net9.0/dotnetapp.exe
+```
+
+### Compile Java demo application (optional)
+
+Download and install [JDK 17 or greater](https://learn.microsoft.com/en-us/java/openjdk/download).
+
+Export `JAVA_HOME` variable (your JDK path may differ):
+
+```bash
+export JAVA_HOME='/c/Program Files/Eclipse Adoptium/jdk-21.0.2.13-hotspot'
+```
+
+A simple Java Spring Boot application is provided in this repo to allow you to test signing JAR files.
+You can test using a different JAR file, this is only provided here for convenience.
+
+Compile Java application as follows:
+
+```bash
+cd javademoapp
+./mvnw package -DskipTests
+cd ..
+```
+
+### Use jsign and Trusted Signing to sign executable file
+
+**NOTE:** (jsign)[https://ebourg.github.io/jsign/] is a third party tool not supported by Microsoft.
+
+1. Download all-in-one `jsign` jar:
+
+    ```bash
+    curl -o jsign-7.1.jar https://github.com/ebourg/jsign/releases/download/7.1/jsign-7.1.jar
+    ```
+
+1. Get access token for code signing:
+
+    ```bash
+    ACCESS_TOKEN=$(az account get-access-token --resource https://codesigning.azure.net --query accessToken --output tsv)
+    ```
+
+1. Use command to sign executable:
+
+    ```bash
+    java -jar jsign-7.1.jar --storetype TRUSTEDSIGNING \
+        --keystore $ENDPOINT_URI \
+        --storepass $ACCESS_TOKEN \
+        --alias $NAME/$PROFILE_NAME dotnetapp/bin/Debug/net9.0/dotnetapp.exe
+    ```
+
+1. Optionally, use `signtool` to verify signature the following command can be used:
+
+```bash
+Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool verify //pa dotnetapp/bin/Debug/net9.0/dotnetapp.exe
+```
+
+#### Use jarsigner to sign a jar file
+
+`jsign` does not directly support signing `jar` files, however this can be accomplished in conjunction with `jarsigner`, a program included in the JRE (Java Runtime Environment).
+
+As a prerequisite, you first need to setup JRE keystore to trust Microsoft Root Certificate as explained in this [Github issue](https://github.com/ebourg/jsign/discussions/268).
+
+1. Download [Microsoft Identity Verification Root Certificate Authority 2020.crt](http://www.microsoft.com/pkiops/certs/Microsoft%20Identity%20Verification%20Root%20Certificate%20Authority%202020.crt)
+
+    ```bash
+    curl -o 'Microsoft Identity Verification Root Certificate Authority 2020.crt' \
+    http://www.microsoft.com/pkiops/certs/Microsoft%20Identity%20Verification%20Root%20Certificate%20Authority%202020.crt
+    ```
+
+1. Import Microsoft Root CA certificate into your JRE's `cacerts` file:
+
+    ```bash
+    sudo keytool -importcert -alias microsoft-identity-root-ca \
+    -keystore "$JAVA_HOME/lib/security/cacerts" -storepass changeit \
+    -file "Microsoft Identity Verification Root Certificate Authority 2020.crt"
+    ```
+
+1. Provide sudo password if prompted and enter **yes** when prompted to trust certificate.
+
+1. Sign the jar file using the command below:
+
+    ```bash
+    jarsigner -J-cp -Jjsign-7.1.jar -J--add-modules -Jjava.sql \
+    -providerClass net.jsign.jca.JsignJcaProvider \
+    -providerArg $ENDPOINT_URI -keystore NONE \
+    -storetype TRUSTEDSIGNING -storepass $ACCESS_TOKEN \
+    javademoapp/target/demo-0.0.1-SNAPSHOT.jar $NAME/$PROFILE_NAME 
+    ```
+
+1. Optionally to verify the jar file has been signed, use this command:
+
+    ```bash
+    jarsigner -verify -verbose -certs javademoapp/target/demo-0.0.1-SNAPSHOT.jar
+    ```
+
+1. As a final verification step, you can optionally attempt to run the `jar` and confirm it is still functional:
+
+    ```bash
+    cd javademoapp
+    ./mvnw spring-boot:run
+    ```
