@@ -232,7 +232,7 @@ cd ..
 
 ### Use jsign and Trusted Signing to sign executable file
 
-**NOTE:** (jsign)[https://ebourg.github.io/jsign/] is a third party tool not supported by Microsoft.
+**NOTE:** [jsign](https://ebourg.github.io/jsign/) is a third party tool not supported by Microsoft.
 
 1. Download all-in-one `jsign` jar:
 
