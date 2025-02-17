@@ -180,7 +180,10 @@ cd ..
 Use the following command to sign the `dotnetapp.exe` compiled above:
 
 ```bash
-Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool sign //v //debug //fd SHA256 //tr http://timestamp.acs.microsoft.com //td SHA256 //dlib Microsoft.Trusted.Signing.Client/bin/x64/Azure.CodeSigning.Dlib.dll //dmdf metadata.json dotnetapp/bin/Debug/net9.0/dotnetapp.exe
+Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool sign \
+//v //debug //fd SHA256 //tr http://timestamp.acs.microsoft.com //td SHA256 \
+//dlib Microsoft.Trusted.Signing.Client/bin/x64/Azure.CodeSigning.Dlib.dll \
+//dmdf metadata.json dotnetapp/bin/Debug/net9.0/dotnetapp.exe
 ```
 
 If successful you should see output similar to this:
@@ -202,7 +205,8 @@ Number of errors: 0
 To verify signature the following command can be used:
 
 ```bash
-Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool verify //pa dotnetapp/bin/Debug/net9.0/dotnetapp.exe
+Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool verify \
+//pa dotnetapp/bin/Debug/net9.0/dotnetapp.exe
 ```
 
 ### Compile Java demo application (optional)
@@ -239,7 +243,8 @@ cd ..
 1. Get access token for code signing:
 
     ```bash
-    ACCESS_TOKEN=$(az account get-access-token --resource https://codesigning.azure.net --query accessToken --output tsv)
+    ACCESS_TOKEN=$(az account get-access-token --resource https://codesigning.azure.net \
+    --query accessToken --output tsv)
     ```
 
 1. Use command to sign executable:
@@ -254,7 +259,8 @@ cd ..
 1. Optionally, use `signtool` to verify signature the following command can be used:
 
 ```bash
-Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool verify //pa dotnetapp/bin/Debug/net9.0/dotnetapp.exe
+Microsoft.Windows.SDK.BuildTools/bin/10.0.22621.0/x64/signtool verify \
+//pa dotnetapp/bin/Debug/net9.0/dotnetapp.exe
 ```
 
 #### Use jarsigner to sign a jar file
